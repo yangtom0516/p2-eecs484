@@ -452,22 +452,22 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 up.addSharedFriend(u3);
                 results.add(up);
             */
-            String query1 =
+            String bidir =
+                "WITH friends_bidir AS (" +
+                "SELECT user1_id AS a, user2_id AS b FROM " + FriendsTable + " " +
+                "UNION ALL " +
+                "SELECT user2_id AS a, user1_id AS b FROM " + FriendsTable + ") ";
+            String query1 = bidir +
                 "SELECT u1.user_id, u1.first_name, u1.last_name, " +
                 "u2.user_id, u2.first_name, u2.last_name, " +
                 "COUNT(*) AS common_friends " +
-                "FROM " + UsersTable + " u1 " +
-                "JOIN " + UsersTable + " u2 " +
-                "ON u1.user_id < u2.user_id " +
-                "JOIN " + UsersTable + " u3 " +
-                "ON u3.user_id <> u1.user_id AND u3.user_id <> u2.user_id " +
-                "JOIN " + FriendsTable + " f1 " +
-                "ON (f1.user1_id = LEAST(u1.user_id, u3.user_id) AND f1.user2_id = GREATEST(u1.user_id, u3.user_id)) " +
-                "JOIN " + FriendsTable + " f2 " +
-                "ON (f2.user1_id = LEAST(u2.user_id, u3.user_id) AND f2.user2_id = GREATEST(u2.user_id, u3.user_id)) " +
+                "FROM friends_bidir f1 " +
+                "JOIN friends_bidir f2 ON f1.b = f2.b AND f1.a < f2.a " +
+                "JOIN " + UsersTable + " u1 ON u1.user_id = f1.a " +
+                "JOIN " + UsersTable + " u2 ON u2.user_id = f2.a " +
                 "WHERE NOT EXISTS ( " +
                 "SELECT 1 FROM " + FriendsTable + " f3 " +
-                "WHERE f3.user1_id = LEAST(u1.user_id, u2.user_id) AND f3.user2_id = GREATEST(u1.user_id, u2.user_id)) " +
+                "WHERE f3.user1_id = f1.a AND f3.user2_id = f2.a) " +
                 "GROUP BY u1.user_id, u1.first_name, u1.last_name, u2.user_id, u2.first_name, u2.last_name " +
                 "ORDER BY common_friends DESC, u1.user_id ASC, u2.user_id ASC " +
                 "FETCH FIRST " + num + " ROWS ONLY";
@@ -481,13 +481,12 @@ public final class StudentFakebookOracle extends FakebookOracle {
                 String lname2 = rst.getString(6);
                 UsersPair up = new UsersPair(new UserInfo(uid1, fname1, lname1), new UserInfo(uid2, fname2, lname2));
 
-                String query2 =
+                String query2 = bidir +
                     "SELECT u.user_id, u.first_name, u.last_name " +
-                    "FROM " + UsersTable + " u " +
-                    "JOIN " + FriendsTable + " f1 " +
-                    "ON (f1.user1_id = LEAST(u.user_id, " + uid1 + ") AND f1.user2_id = GREATEST(u.user_id, " + uid1 + ")) " +
-                    "JOIN " + FriendsTable + " f2 " +
-                    "ON (f2.user1_id = LEAST(u.user_id, " + uid2 + ") AND f2.user2_id = GREATEST(u.user_id, " + uid2 + ")) " +
+                    "FROM friends_bidir f1 " +
+                    "JOIN friends_bidir f2 ON f1.b = f2.b " +
+                    "JOIN " + UsersTable + " u ON u.user_id = f1.b " +
+                    "WHERE f1.a = " + uid1 + " AND f2.a = " + uid2 + " " +
                     "ORDER BY u.user_id ASC";
                 ResultSet rst2 = stmt2.executeQuery(query2);
                 while (rst2.next()) {
