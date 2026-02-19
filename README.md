@@ -5,7 +5,7 @@ Before compiling and running, change the username and password in FakebookOracle
 To compile, run
 
 ```
-make
+make 
 ```
 
 To execute, run
